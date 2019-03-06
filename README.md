@@ -1,99 +1,81 @@
-# ng2-uploader
+# ngx-uploader
 
-For demos please see [demos page](http://ng2-uploader.com).
+For demos please see [demos page](http://ngx-uploader.com).
 
 ## Angular2 File Uploader
 
 ### Installation
 
 ```
-npm install ng2-uploader --save
+npm install ngx-uploader --save
 ```
 
 ### API Docs
 
-[http://docs.ng2-uploader.com](http://docs.ng2-uploader.com)
+[http://docs.ngx-uploader.com](http://docs.ngx-uploader.com)
 
-### Available parameters
+### Examples
 
-|Parameter   	| Example Value
-|---	       |---	|
-| url   	    | http://api.ng2-uploader.com:10050  	|
-| filterExtensions | true/false |
-| allowedExtensions | ['image/png', 'image/jpg'] or ['jpg', 'png'] |
-| calculateSpeed | true/false |
-| data          | { userId: 12, isAdmin: true } |
-| customHeaders  | { 'custom-header': 'value' } |
-| fieldName      | 'user[avatar]'
-| fieldReset     | true/false
-| authToken      | 012313asdadklj123123 |
-| authTokenPrefix | 'Bearer' (default) |
+- [Basic Example](https://github.com/jkuri/ngx-uploader#basic-example)
+- [Advanced Example](https://github.com/jkuri/ngx-uploader#advanced-example)
+- [Advanced Example with plain JSON](https://github.com/jkuri/ngx-uploader#advanced-example-json)
 
-**All parameters except `url` are optional.**
+--------
 
-
-#### Examples
-
-1. [Basic Example](https://github.com/jkuri/ng2-uploader#basic-example)
-2. [Advanced Example](https://github.com/jkuri/ng2-uploader#advanced-example)
-
-#### Backend Examples
-
-1. [NodeJS using HapiJS](https://github.com/jkuri/ng2-uploader#backend-example-using-hapijs)
-2. [NodeJS using express](https://github.com/jkuri/ng2-uploader#backend-example-using-express)
-3. [PHP (Plain)](https://github.com/jkuri/ng2-uploader#backend-example-using-plain-php)
-
-### Basic Example
+#### Basic Example
 
 ````ts
 // app.module.ts
-import { Ng2UploaderModule } from 'ng2-uploader';
+import { NgUploaderModule } from 'ngx-uploader';
 ...
 @NgModule({
   ...
   imports: [
-    Ng2UploaderModule
+    NgUploaderModule
   ],
   ...
 })
-// app.component.ts
-import { Component } from '@angular/core';
-import { Ng2UploaderOptions } from 'ng2-uploader';
+
+// demo.component.ts
+import { Component, NgZone, Inject } from '@angular/core';
+import { NgUploaderOptions } from 'ngx-uploader';
 
 @Component({
-  selector: 'demo-app',
-  templateUrl: 'app/demo.html'
+  selector: 'demo',
+  templateUrl: 'demo.component.html'
 })
-export class DemoApp {
-  uploadFile: any;
-  hasBaseDropZoneOver: boolean = false;
-  options: Ng2UploaderOptions = {
-    url: 'http://localhost:10050/upload'
-  };
-  sizeLimit = 2000000;
+export class DemoComponent {
+  options: NgUploaderOptions;
+  response: any;
+  hasBaseDropZoneOver: boolean;
 
-  handleUpload(data): void {
-    if (data && data.response) {
-      data = JSON.parse(data.response);
-      this.uploadFile = data;
-    }
+  constructor(@Inject(NgZone) private zone: NgZone) {
+    this.options = new NgUploaderOptions({
+      url: 'http://api.ngx-uploader.com/upload',
+      autoUpload: true,
+      calculateSpeed: true
+    });
   }
 
-  fileOverBase(e:any):void {
+  handleUpload(data: any) {
+    setTimeout(() => {
+      this.zone.run(() => {
+        this.response = data;
+        if (data && data.response) {
+          this.response = JSON.parse(data.response);
+        }
+      });
+    });
+  }
+
+  fileOverBase(e: boolean) {
     this.hasBaseDropZoneOver = e;
-  }
-
-  beforeUpload(uploadingFile): void {
-    if (uploadingFile.size > this.sizeLimit) {
-      uploadingFile.setAbort();
-      alert('File is too large');
-    }
   }
 }
 ````
 
 ````html
-<!-- app.component.html -->
+<!-- demo.component.html -->
 <input type="file"
        ngFileSelect
        [options]="options"
@@ -108,218 +90,245 @@ export class DemoApp {
      [options]="options"
      (onUpload)="handleUpload($event)"
      [ngClass]="{'file-over': hasBaseDropZoneOver}"
-     (onFileOver)="fileOverBase($event)"
-     (beforeUpload)="beforeUpload($event)">
+     (onFileOver)="fileOverBase($event)">
 </div>
 
 <div>
-Response: {{ uploadFile | json }}
+Response: {{ response | json }}
 </div>
 ````
 
-### Advanced Example
-
-This example show how to use available options and progress.
+#### Advanced Example
 
 ```ts
-import { Component, OnInit, NgZone } from '@angular/core';
-import { Ng2UploaderOptions } from 'ng2-uploader';
+// advanced-demo.component.ts
+import { Component, NgZone, Inject, EventEmitter } from '@angular/core';
+import { NgUploaderOptions, UploadedFile, UploadRejected } from 'ngx-uploader';
 
 @Component({
-  selector: 'app-component',
-  templateUrl: 'app.component.html'
+  selector: 'advanced-demo',
+  templateUrl: 'advanced-demo.component.html'
 })
-export class AppDemoComponent implements OnInit {
-  private zone: NgZone;
-  private options: Ng2UploaderOptions;
-  private progress: number = 0;
-  private response: any = {};
+export class AdvancedDemoComponent {
+  options: NgUploaderOptions;
+  response: any;
+  sizeLimit: number = 1000000; // 1MB
+  previewData: any;
+  errorMessage: string;
+  inputUploadEvents: EventEmitter<string>;
 
-  ngOnInit() {
-    this.zone = new NgZone({ enableLongStackTrace: false });
-    this.options = {
-      url: 'http://api.ng2-uploader.com:10050/upload',
+  constructor(@Inject(NgZone) private zone: NgZone) {
+    this.options = new NgUploaderOptions({
+      url: 'http://api.ngx-uploader.com/upload',
       filterExtensions: true,
-      allowedExtensions: ['image/png', 'image/jpg'],
-      calculateSpeed: true,
-      data: {
-        userId: 12,
-        isAdmin: true
-      },
-      customHeaders: {
-        'custom-header': 'value'
-      },
-      authToken: 'asd123b123zxc08234cxcv',
-      authTokenPrefix: 'Bearer'
-    };
+      allowedExtensions: ['jpg', 'png'],
+      maxSize: 2097152,
+      data: { userId: 12 },
+      autoUpload: false,
+      fieldName: 'file',
+      fieldReset: true,
+      maxUploads: 2,
+      method: 'POST',
+      previewUrl: true,
+      withCredentials: false
+    });
+
+    this.inputUploadEvents = new EventEmitter<string>();
   }
 
-  handleUpload(data: any): void {
-    this.zone.run(() => {
-      this.response = data;
-      this.progress = Math.floor(data.progress.percent / 100);
+  startUpload() {
+    this.inputUploadEvents.emit('startUpload');
+  }
+
+  beforeUpload(uploadingFile: UploadedFile): void {
+    if (uploadingFile.size > this.sizeLimit) {
+      uploadingFile.setAbort();
+      this.errorMessage = 'File is too large!';
+    }
+  }
+
+  handleUpload(data: any) {
+    setTimeout(() => {
+      this.zone.run(() => {
+        this.response = data;
+        if (data && data.response) {
+          this.response = JSON.parse(data.response);
+        }
+      });
     });
+  }
+
+  handlePreviewData(data: any) {
+    this.previewData = data;
   }
 }
 ```
 
+```html
+<!-- advanced-demo.component.html -->
+<div class="button-container">
+  <label class="upload-button is-pulled-left">
+    <input type="file"
+           class="hidden"
+           ngFileSelect
+           [options]="options"
+           [events]="inputUploadEvents"
+           (onUpload)="handleUpload($event)"
+           (onPreviewData)="handlePreviewData($event)"
+           (beforeUpload)="beforeUpload($event)">
+    Browse
+  </label>
+</div>
 
-### Backend Example Using HapiJS
+<p>
+  Allowed extensions: <code><b>.jpg</b>, <b>.png</b></code>
+</p>
 
-````javascript
-'use strict';
+<div>
+  <button type="button" class="start-upload-button" (click)="startUpload()">Start Upload</button>
+</div>
 
-const Hapi        = require('hapi');
-const Inert       = require('inert');
-const Md5         = require('md5');
-const Multiparty  = require('multiparty');
-const fs          = require('fs');
-const path        = require('path');
-const server      = new Hapi.Server();
+<div *ngIf="response">
+  <pre><code>{{ response | json }}</code></pre>
+</div>
 
-server.connection({ port: 10050, routes: { cors: true } });
-server.register(Inert, (err) => {});
+<div *ngIf="errorMessage">
+  <code>{{ errorMessage }}</code>
+</div>
 
-const upload = {
-  payload: {
-    maxBytes: 209715200,
-    output: 'stream',
-    parse: false
-  },
-  handler: (request, reply) => {
-    const form = new Multiparty.Form();
-    form.parse(request.payload, (err, fields, files) => {
-      if (err) {
-        return reply({status: false, msg: err});
-      }
+<div *ngIf="previewData && !response">
+  <img [src]="previewData">
+</div>
+```
 
-      let responseData = [];
+#### Advanced Example with plain JSON
 
-      files.file.forEach((file) => {
-        let fileData = fs.readFileSync(file.path);
-        const originalName = file.originalFilename;
-        const generatedName = Md5(new Date().toString() +
-          originalName) + path.extname(originalName);
-        const filePath = path.resolve(__dirname, 'uploads',
-          generatedName);
+```ts
+// advanced-demo.component.ts
+import { Component, NgZone, Inject, EventEmitter } from '@angular/core';
+import { NgUploaderOptions, UploadedFile, UploadRejected } from 'ngx-uploader';
 
-        fs.writeFileSync(filePath, fileData);
-        const data = {
-          originalName: originalName,
-          generatedName: generatedName
-        };
+@Component({
+  selector: 'advanced-demo',
+  templateUrl: 'advanced-demo.component.html'
+})
+export class AdvancedDemoComponent {
+  options: NgUploaderOptions;
+  response: any;
+  sizeLimit: number = 1000000; // 1MB
+  previewData: any;
+  errorMessage: string;
+  startUploadEvent: EventEmitter<string>;
 
-        responseData.push(data);
+  constructor(@Inject(NgZone) private zone: NgZone) {
+    this.options = new NgUploaderOptions({
+      url: 'http://api.ngx-uploader.com/upload',
+      filterExtensions: true,
+      allowedExtensions: ['txt', 'pdf'],
+      maxSize: 2097152,
+      data:{
+        '@type': "File",
+        "title": "My lorem.txt file",
+        "file": {
+          "data": "TG9yZW0gSXBzdW0u",
+          "encoding": "base64",
+          "filename": "lorem.txt",
+          "content-type": "text/plain"
+          }
+        },
+       customHeaders: {
+         'Content-Type':'application/json',
+         'Accept':'application/json'
+      },
+      autoUpload: false,
+      plainJson: true,
+      fieldName: 'file',
+      fieldReset: true,
+      maxUploads: 2,
+      method: 'POST',
+      previewUrl: true,
+      withCredentials: false
+    });
+
+    this.startUploadEvent = new EventEmitter<string>();
+  }
+
+  startUpload() {
+    this.startUploadEvent.emit("startUpload");
+  }
+
+  beforeUpload(ev : Event): void {
+   
+    let file: File =  ev.target['files'][0];
+    let myReader: FileReader = new FileReader();
+
+    myReader.onloadend = (e) => {
+      let tmpB64String = myReader.result.split(',');
+      this.options['data']['file']['data'] = tmpB64String[1] ;
+      this.options['data']['file']['filename'] = file.name;
+      this.options['data']['title'] = file.name;   
+    }
+    myReader.readAsDataURL(file);
+  }
+
+  handleUpload(data: any) {
+    setTimeout(() => {
+      this.zone.run(() => {
+        this.response = data;
+        if (data && data.response) {
+          this.response = JSON.parse(data.response);
+        }
       });
-
-      reply({status: true, data: responseData});
     });
   }
-};
 
-const uploads = {
-  handler: {
-    directory: {
-      path: path.resolve(__dirname, 'uploads')
-    }
-  }
-};
-
-server.route([
-  { method: 'POST', path: '/upload',          config: upload  },
-  { method: 'GET',  path: '/uploads/{path*}', config: uploads }
-]);
-
-server.start(() => {
-  console.log('Upload server running at', server.info.uri);
-});
-````
-
-### Backend example using express
-
-````js
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const path = require('path');
-
-const app = express();
-app.use(cors());
-
-const upload = multer({
-  dest: 'uploads/',
-  storage: multer.diskStorage({
-    filename: (req, file, cb) => {
-      let ext = path.extname(file.originalname);
-      cb(null, `${Math.random().toString(36).substring(7)}${ext}`);
-    }
-  })
-});
-
-app.post('/upload', upload.any(), (req, res) => {
-  res.json(req.files.map(file => {
-    let ext = path.extname(file.originalname);
-    return {
-      originalName: file.originalname,
-      filename: file.filename
-    }
-  }));
-});
-
-app.listen(10050, () => {
-  console.log('ng2-uploader server running on port 10050.');
-});
-````
-
-### Backend example using plain PHP
-
-````php
-<?php
-
-header("Access-Control-Allow-Origin: *");
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-  echo json_encode(array('status' => false));
-  exit;
-}
-
-$path = 'uploads/';
-
-if (isset($_FILES['file'])) {
-  $originalName = $_FILES['file']['name'];
-  $ext = '.'.pathinfo($originalName, PATHINFO_EXTENSION);
-  $generatedName = md5($_FILES['file']['tmp_name']).$ext;
-  $filePath = $path.$generatedName;
-
-  if (!is_writable($path)) {
-    echo json_encode(array(
-      'status' => false,
-      'msg'    => 'Destination directory not writable.'
-    ));
-    exit;
-  }
-
-  if (move_uploaded_file($_FILES['file']['tmp_name'], $filePath)) {
-    echo json_encode(array(
-      'status'        => true,
-      'originalName'  => $originalName,
-      'generatedName' => $generatedName
-    ));
+  handlePreviewData(data: any) {
+    this.previewData = data;
   }
 }
-else {
-  echo json_encode(
-    array('status' => false, 'msg' => 'No file uploaded.')
-  );
-  exit;
-}
+```
 
-?>
-````
+```html
+<!-- advanced-demo.component.html -->
+<div class="button-container">
+  <label class="upload-button is-pulled-left">
+    <input type="file"
+           class="hidden"
+           ngFileSelect
+           [options]="options"
+           [events]="startUploadEvent"
+           (onUpload)="handleUpload($event)"
+           (onPreviewData)="handlePreviewData($event)"
+           (beforeUpload)="beforeUpload($event)">
+    Browse
+  </label>
+</div>
+
+<p>
+  Allowed extensions: <code><b>.jpg</b>, <b>.png</b></code>
+</p>
+
+<div>
+  <button type="button" class="start-upload-button" (click)="startUpload()">Start Upload</button>
+</div>
+
+<div *ngIf="response">
+  <pre><code>{{ response | json }}</code></pre>
+</div>
+
+<div *ngIf="errorMessage">
+  <code>{{ errorMessage }}</code>
+</div>
+
+<div *ngIf="previewData && !response">
+  <img [src]="previewData">
+</div>
+```
+---------
 
 ### Demos
 
-For more information, examples and usage examples please see [demos](http://ng2-uploader.com)
+For more information, examples and usage examples please see [demos](http://ngx-uploader.com)
 
 #### LICENCE
 

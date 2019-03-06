@@ -1,4 +1,5 @@
 export class UploadedFile {
+  xhr: XMLHttpRequest | undefined;
   id: string;
   status: number;
   statusText: string;
@@ -12,9 +13,10 @@ export class UploadedFile {
   startTime: number;
   endTime: number;
   speedAverage: number;
-  speedAverageHumanized: string;
+  speedAverageHumanized: string|null;
 
-  constructor(id: string, originalName: string, size: number) {
+  constructor(id: string, originalName: string, size: number, xhr?: XMLHttpRequest) {
+    this.xhr = xhr;
     this.id = id;
     this.originalName = originalName;
     this.size = size;
@@ -34,7 +36,13 @@ export class UploadedFile {
     this.speedAverageHumanized = null;
   }
 
-  setProgres(progress: Object): void {
+  abortUpload(){
+    if (this.xhr) {
+      this.xhr.abort();
+    }
+  }
+
+  setProgress(progress: Object): void {
     this.progress = progress;
   }
 

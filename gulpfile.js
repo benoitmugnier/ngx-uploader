@@ -1,12 +1,26 @@
 const gulp = require('gulp');
 const typedoc = require('gulp-typedoc');
+const conventionalChangelog = require('gulp-conventional-changelog');
+
+gulp.task('changelog', () => {
+  return gulp.src('CHANGELOG.md', {
+    buffer: false
+  })
+  .pipe(conventionalChangelog({
+    preset: 'angular',
+    releaseCount: 1
+  }, {
+    currentTag: require('./package.json').version
+  }))
+  .pipe(gulp.dest('./'));
+});
 
 gulp.task('docs', () => {
   return gulp.src([
     'index.ts',
     '!node_modules/**/*'])
     .pipe(typedoc({
-      name: 'ng2-uploader docs',
+      name: 'ngx-uploader docs',
       mode: 'file',
       out: 'docs',
       ignoreCompilerErrors: true,

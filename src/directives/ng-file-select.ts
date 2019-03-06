@@ -6,39 +6,49 @@ import {
   Output,
   HostListener,
   Inject,
-  OnChanges
+  OnChanges,
+  SimpleChange
 } from '@angular/core';
-import { Ng2UploaderService } from '../services/ng2-uploader';
-import { INg2UploaderOptions, Ng2UploaderOptions, UploadedFile, UploadRejected } from '../classes';
+import { NgUploaderService } from '../services/ngx-uploader';
+import { NgUploaderOptions, UploadedFile, UploadRejected } from '../classes/index';
 
 @Directive({
-  selector: '[ngFileSelect]'
+  selector: '[ngFileSelect]',
+  providers: [
+    NgUploaderService
+  ],
 })
 export class NgFileSelectDirective implements OnChanges {
-  @Input() options: Ng2UploaderOptions;
+  @Input() options: NgUploaderOptions;
   @Input() events: EventEmitter<any>;
   @Output() onUpload: EventEmitter<any> = new EventEmitter();
   @Output() onPreviewData: EventEmitter<any> = new EventEmitter();
   @Output() onUploadRejected: EventEmitter<UploadRejected> = new EventEmitter<UploadRejected>();
   @Output() beforeUpload: EventEmitter<UploadedFile> = new EventEmitter<UploadedFile>();
 
-  files: any[] = [];
+  files: File[] = [];
 
   constructor(
     @Inject(ElementRef) public el: ElementRef,
-    @Inject(Ng2UploaderService) public uploader: Ng2UploaderService) { }
+    @Inject(NgUploaderService) public uploader: NgUploaderService) { }
 
-  ngOnChanges() {
-    if (!this.options) {
+  ngOnChanges(changes: {[propName: string]: SimpleChange}) {
+    if (!this.options || !changes) {
       return;
     }
-
-    this.uploader.setOptions(new Ng2UploaderOptions(this.options));
+    if(this.options.allowedExtensions) {
+      this.options.allowedExtensions = this.options.allowedExtensions.map(ext => ext.toLowerCase());
+    }
+    this.uploader.setOptions(new NgUploaderOptions(this.options));
 
     this.uploader._emitter.subscribe((data: any) => {
       this.onUpload.emit(data);
-      if (data.done) {
-        this.files = this.files.filter(f => f.name !== data.originalName);
+      if (data.done && this.files && this.files.length) {
+        this.files = [].filter.call(this.files, (f: File) => f.name !== data.originalName);
+      }
+
+      if (data.done && this.uploader.opts.fieldReset) {
+        this.el.nativeElement.value = '';
       }
     });
 
@@ -47,7 +57,7 @@ export class NgFileSelectDirective implements OnChanges {
     });
 
     this.uploader._beforeEmitter.subscribe((uploadingFile: UploadedFile) => {
-      this.beforeUpload.emit(uploadingFile)
+      this.beforeUpload.emit(uploadingFile);
     });
 
     if (this.events instanceof EventEmitter) {
@@ -61,19 +71,19 @@ export class NgFileSelectDirective implements OnChanges {
 
   @HostListener('change') onChange(): void {
     this.files = this.el.nativeElement.files;
-    if (!this.files) {
-      console.log('return');
+    if (!this.files || !this.files.length) {
       return;
     }
 
-    if (this.options.filterExtensions && this.options.allowedExtensions) {
-      this.files = this.files.filter(f => {
-        if (this.options.allowedExtensions.indexOf(f.type) !== -1) {
+    if (this.options.filterExtensions && this.options.allowedExtensions && this.files && this.files.length) {
+      this.files = [].filter.call(this.files, (f: File) => {
+        let allowedExtensions = this.options.allowedExtensions || [];
+        if (allowedExtensions.indexOf(f.type.toLowerCase()) !== -1) {
           return true;
         }
 
-        let ext: string = f.name.split('.').pop();
-        if (this.options.allowedExtensions.indexOf(ext) !== -1 ) {
+        let ext = f.name.split('.').pop();
+        if (ext && allowedExtensions.indexOf(ext.toLowerCase()) !== -1 ) {
           return true;
         }
 
@@ -83,7 +93,29 @@ export class NgFileSelectDirective implements OnChanges {
       });
     }
 
-    if (this.files.length) {
+    let maxSize = typeof this.options.maxSize !== 'undefined' ? this.options.maxSize : null;
+
+    if (maxSize !== null && maxSize > 0) {
+      this.files = [].filter.call(this.files, (f: File) => {
+        if (maxSize) {
+          if (f.size <= maxSize) {
+            return true;
+          }
+        }
+
+        this.onUploadRejected.emit({file: f, reason: UploadRejected.MAX_SIZE_EXCEEDED});
+        return false;
+      });
+    }
+
+    let maxUploads = typeof this.options.maxUploads !== 'undefined' ? this.options.maxUploads : null;
+
+    if (maxUploads !== null && (maxUploads > 0 && this.files.length > maxUploads)) {
+      this.onUploadRejected.emit({file: this.files.pop(), reason: UploadRejected.MAX_UPLOADS_EXCEEDED});
+      this.files = [];
+    }
+
+    if (this.files && this.files.length) {
       this.uploader.addFilesToQueue(this.files);
     }
   }

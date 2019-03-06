@@ -1,15 +1,19 @@
 {
   "compilerOptions": {
     "target": "es5",
+    "module": "es2015",
     "moduleResolution": "node",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "sourceMap": false,
+    "sourceMap": true,
     "noEmitHelpers": false,
     "noImplicitAny": true,
+    "noUnusedLocals": true,
     "declaration": true,
+    "strictNullChecks": true,
     "skipLibCheck": true,
     "stripInternal": true,
+    "noUnusedParameters": true,
     "lib": ["es6", "dom"],
     "rootDir": ".",
     "types": [
@@ -25,8 +29,7 @@
     "dist"
   ],
   "files": [
-    "index.ts",
-    "ng2-uploader.ts"
+    "ngx-uploader.ts"
   ],
   "angularCompilerOptions": {
     "genDir": "aot",

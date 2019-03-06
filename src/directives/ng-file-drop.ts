@@ -7,34 +7,38 @@ import {
   HostListener,
   Inject,
   OnChanges,
-  OnInit
+  OnInit,
+  SimpleChange
 } from '@angular/core';
-import { Ng2UploaderService } from '../services/ng2-uploader';
-import { INg2UploaderOptions, Ng2UploaderOptions, UploadedFile, UploadRejected } from '../classes';
+import {NgUploaderService} from '../services/ngx-uploader';
+import {NgUploaderOptions, UploadedFile, UploadRejected} from '../classes/index';
 
 @Directive({
-  selector: '[ngFileDrop]'
+  selector: '[ngFileDrop]',
+  providers: [
+    NgUploaderService
+  ]
 })
 export class NgFileDropDirective implements OnChanges, OnInit {
-  @Input() options: Ng2UploaderOptions;
+  @Input() options: NgUploaderOptions;
   @Input() events: EventEmitter<any>;
   @Output() onUpload: EventEmitter<any> = new EventEmitter();
   @Output() onPreviewData: EventEmitter<any> = new EventEmitter();
-  @Output() onFileOver:EventEmitter<any> = new EventEmitter();
+  @Output() onFileOver: EventEmitter<any> = new EventEmitter();
   @Output() onUploadRejected: EventEmitter<UploadRejected> = new EventEmitter<UploadRejected>();
   @Output() beforeUpload: EventEmitter<UploadedFile> = new EventEmitter<UploadedFile>();
 
-  files: any[] = [];
+  files: File[] = [];
 
-  constructor(
-    @Inject(ElementRef) public el: ElementRef,
-    @Inject(Ng2UploaderService) public uploader: Ng2UploaderService) { }
+  constructor(@Inject(ElementRef) public el: ElementRef,
+              @Inject(NgUploaderService) public uploader: NgUploaderService) {
+  }
 
   ngOnInit() {
     this.uploader._emitter.subscribe((data: any) => {
       this.onUpload.emit(data);
-      if (data.done) {
-        this.files = this.files.filter(f => f.name !== data.originalName);
+      if (data.done && this.files && this.files.length) {
+        this.files = [].filter.call(this.files, (f: File) => f.name !== data.originalName);
       }
     });
 
@@ -43,7 +47,7 @@ export class NgFileDropDirective implements OnChanges, OnInit {
     });
 
     this.uploader._beforeEmitter.subscribe((uploadingFile: UploadedFile) => {
-      this.beforeUpload.emit(uploadingFile)
+      this.beforeUpload.emit(uploadingFile);
     });
 
     setTimeout(() => {
@@ -59,12 +63,15 @@ export class NgFileDropDirective implements OnChanges, OnInit {
     this.initEvents();
   }
 
-  ngOnChanges() {
-    if (!this.options) {
+  ngOnChanges(changes: { [propName: string]: SimpleChange }) {
+    if (!this.options || !changes) {
       return;
     }
 
-    this.options = new Ng2UploaderOptions(this.options);
+    if (this.options.allowedExtensions) {
+      this.options.allowedExtensions = this.options.allowedExtensions.map(ext => ext.toLowerCase());
+    }
+    this.options = new NgUploaderOptions(this.options);
     this.uploader.setOptions(this.options);
   }
 
@@ -73,42 +80,27 @@ export class NgFileDropDirective implements OnChanges, OnInit {
       return;
     }
 
-    this.el.nativeElement.addEventListener('drop', (e: any) => {
-      e.stopPropagation();
-      e.preventDefault();
-
-      this.files = Array.from(e.dataTransfer.files);
-      if (this.files.length) {
-        this.uploader.addFilesToQueue(this.files);
-      }
-    }, false);
-
-    this.el.nativeElement.addEventListener('dragenter', (e: DragEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
-    }, false);
-
-    this.el.nativeElement.addEventListener('dragover', (e: DragEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
-    }, false);
+    this.el.nativeElement.addEventListener('drop', this.stopEvent, false);
+    this.el.nativeElement.addEventListener('dragenter', this.stopEvent, false);
+    this.el.nativeElement.addEventListener('dragover', this.stopEvent, false);
   }
 
-  @HostListener('change') onChange(): void {
-    this.files = this.el.nativeElement.files;
-    if (!this.files) {
-      console.log('return');
+  @HostListener('drop', ['$event']) onDrop(e: Event | any): void {
+    this.onFileOver.emit(false);
+    this.files = Array.from<File>(e.dataTransfer.files);
+    if (!this.files || !this.files.length) {
       return;
     }
 
-    if (this.options.filterExtensions && this.options.allowedExtensions) {
-      this.files = this.files.filter(f => {
-        if (this.options.allowedExtensions.indexOf(f.type) !== -1) {
+    if (this.options.filterExtensions && this.options.allowedExtensions && this.files && this.files.length) {
+      this.files = [].filter.call(this.files, (f: File) => {
+        let allowedExtensions = this.options.allowedExtensions || [];
+        if (allowedExtensions.indexOf(f.type.toLowerCase()) !== -1) {
           return true;
         }
 
-        let ext: string = f.name.split('.').pop();
-        if (this.options.allowedExtensions.indexOf(ext) !== -1 ) {
+        let ext = f.name.split('.').pop();
+        if (ext && allowedExtensions.indexOf(ext.toLowerCase()) !== -1) {
           return true;
         }
 
@@ -118,19 +110,52 @@ export class NgFileDropDirective implements OnChanges, OnInit {
       });
     }
 
-    if (this.files.length) {
+    let maxSize = typeof this.options.maxSize !== 'undefined' ? this.options.maxSize : null;
+
+    if (maxSize !== null && maxSize > 0) {
+      this.files = [].filter.call(this.files, (f: File) => {
+        if (maxSize) {
+          if (f.size <= maxSize) {
+            return true;
+          }
+        }
+
+        this.onUploadRejected.emit({file: f, reason: UploadRejected.MAX_SIZE_EXCEEDED});
+        return false;
+      });
+    }
+
+    let maxUploads = typeof this.options.maxUploads !== 'undefined' ? this.options.maxUploads : null;
+
+    if (maxUploads !== null && (maxUploads > 0 && this.files.length > maxUploads)) {
+      this.onUploadRejected.emit({file: this.files.pop(), reason: UploadRejected.MAX_UPLOADS_EXCEEDED});
+      this.files = [];
+    }
+
+    if (this.files && this.files.length) {
       this.uploader.addFilesToQueue(this.files);
     }
   }
 
   @HostListener('dragover', ['$event'])
-  public onDragOver(event:any):void {
+  public onDragOver(e: any) {
+    if (!e) {
+      return;
+    }
     this.onFileOver.emit(true);
   }
 
   @HostListener('dragleave', ['$event'])
-  public onDragLeave(event:any):any {
+  public onDragLeave(e: any) {
+    if (!e) {
+      return;
+    }
     this.onFileOver.emit(false);
+  }
+
+  private stopEvent(e: Event): void {
+    e.stopPropagation();
+    e.preventDefault();
   }
 
 }
