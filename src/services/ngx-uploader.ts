@@ -30,7 +30,7 @@ export class NgUploaderService {
 
   uploadFile(file: File): void {
     let xhr = new XMLHttpRequest();
-    let payload: FormData | File | {};
+    let payload: any;
     
     if (this.opts.plainJson) {
       payload = JSON.stringify(this.opts.data)
