@@ -16,3 +16,4 @@
 !gulpfile.js
 /.idea
 !rollup.config.js
+!bundle/ngx-uploader.umd.js
