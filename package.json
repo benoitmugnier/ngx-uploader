@@ -1,38 +1,32 @@
 {
-  "_from": "ngx-uploader@2.2.8",
-  "_id": "ngx-uploader@2.2.8",
-  "_inBundle": false,
-  "_integrity": "sha1-pgY3geiZFb9KIX9WvTuMN1tZ+3k=",
-  "_location": "/ngx-uploader",
-  "_phantomChildren": {},
-  "_requested": {
-    "type": "version",
-    "registry": true,
-    "raw": "ngx-uploader@2.2.8",
-    "name": "ngx-uploader",
-    "escapedName": "ngx-uploader",
-    "rawSpec": "2.2.8",
-    "saveSpec": null,
-    "fetchSpec": "2.2.8"
-  },
-  "_requiredBy": [
-    "#USER",
-    "/"
-  ],
-  "_resolved": "https://registry.npmjs.org/ngx-uploader/-/ngx-uploader-2.2.8.tgz",
-  "_shasum": "a6063781e89915bf4a217f56bd3b8c375b59fb79",
-  "_spec": "ngx-uploader@2.2.8",
-  "_where": "/Users/bmu/Desktop/git/TopLink-V2",
-  "author": {
-    "name": "Jan Kuri",
-    "email": "jkuri88@gmail.com"
-  },
-  "bugs": {
-    "url": "https://github.com/jkuri/ngx-uploader/issues"
-  },
-  "bundleDependencies": false,
-  "deprecated": false,
+  "name": "ngx-uploader",
   "description": "Angular File Uploader",
+  "version": "2.2.8",
+  "license": "MIT",
+  "main": "bundle/ngx-uploader.umd.js",
+  "module": "ngx-uploader.js",
+  "typings": "ngx-uploader.d.ts",
+  "author": "Jan Kuri <jkuri88@gmail.com>",
+  "scripts": {
+    "clean": "./scripts/clean.sh",
+    "dev": "tsc --watch",
+    "build": "./node_modules/.bin/ngc -p tsconfig.json && rollup -c",
+    "prepublish": "npm run build",
+    "lint": "tslint \"src/**/*.ts\"",
+    "docs": "gulp docs",
+    "changelog": "gulp changelog"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jkuri/ngx-uploader.git"
+  },
+  "keywords": [
+    "ngx",
+    "angular",
+    "file",
+    "upload",
+    "uploader"
+  ],
   "devDependencies": {
     "@angular/common": "^4.0.1",
     "@angular/compiler": "^4.0.1",
@@ -56,32 +50,5 @@
     "typedoc": "^0.5.10",
     "typescript": "2.2.2",
     "zone.js": "^0.8.5"
-  },
-  "homepage": "https://github.com/jkuri/ngx-uploader#readme",
-  "keywords": [
-    "ngx",
-    "angular",
-    "file",
-    "upload",
-    "uploader"
-  ],
-  "license": "MIT",
-  "main": "bundle/ngx-uploader.umd.js",
-  "module": "ngx-uploader.js",
-  "name": "ngx-uploader",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jkuri/ngx-uploader.git"
-  },
-  "scripts": {
-    "build": "ngc -p tsconfig.json && rollup -c",
-    "changelog": "gulp changelog",
-    "clean": "./scripts/clean.sh",
-    "dev": "tsc --watch",
-    "docs": "gulp docs",
-    "lint": "tslint \"src/**/*.ts\"",
-    "prepublish": "npm run build"
-  },
-  "typings": "ngx-uploader.d.ts",
-  "version": "2.2.8"
+  }
 }
