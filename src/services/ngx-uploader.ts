@@ -41,6 +41,7 @@ export class NgUploaderService {
         form.append(k, this.opts.data[k]);
       });
 
+      // @ts-ignore
       form.append(this.opts.fieldName, file, file.name);
       payload = form;
     } else {
