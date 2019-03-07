@@ -30,7 +30,7 @@ export class NgUploaderService {
 
   uploadFile(file: File): void {
     let xhr = new XMLHttpRequest();
-    let payload: FormData | File | {};
+    let payload: FormData | string | File;
     
     if (this.opts.plainJson) {
       payload = JSON.stringify(this.opts.data)
@@ -41,8 +41,7 @@ export class NgUploaderService {
         form.append(k, this.opts.data[k]);
       });
 
-      // @ts-ignore
-      form.append(this.opts.fieldName, file, file.name);
+      form.append(this.opts.fieldName ? this.opts.fieldName : '', file, file.name);
       payload = form;
     } else {
       payload = file;
@@ -136,7 +135,6 @@ export class NgUploaderService {
     this._beforeEmitter.emit(uploadingFile);
 
     if (!uploadingFile.abort) {
-      // @ts-ignore
       xhr.send(payload);
     } else {
       this.removeFileFromQueue(queueIndex);
