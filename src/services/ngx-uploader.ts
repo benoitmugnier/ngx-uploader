@@ -41,6 +41,7 @@ export class NgUploaderService {
         form.append(k, this.opts.data[k]);
       });
 
+      // @ts-ignore
       form.append(this.opts.fieldName, file, file.name);
       payload = form;
     } else {
@@ -135,6 +136,7 @@ export class NgUploaderService {
     this._beforeEmitter.emit(uploadingFile);
 
     if (!uploadingFile.abort) {
+      // @ts-ignore
       xhr.send(payload);
     } else {
       this.removeFileFromQueue(queueIndex);
