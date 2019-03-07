@@ -9,7 +9,7 @@ export default {
   entry: 'ngx-uploader.js',
   dest: 'bundle/ngx-uploader.umd.js',
   format: 'umd',
-  moduleName: 'ngx-uploader',
+  moduleName: 'bngx-uploader',
   context: 'this',
   plugins: [ node(), buble() ],
   external: Object.keys(pkg.devDependencies),
